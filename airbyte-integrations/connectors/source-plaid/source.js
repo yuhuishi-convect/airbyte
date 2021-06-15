@@ -98,12 +98,14 @@ async function check(config) {
   } else {
     result = {
       status: 'FAILED',
+      error_code: response.data.error_code,
+      error_type: response.data.error_type,
       message: response.data.error_message,
     };
   }
   // Format the result of the check operation according to the Airbyte Specification
   const outputMessage = { type: 'CONNECTION_STATUS', connectionStatus: result };
-  console.log(JSON.stringify(outputMessage));
+  console.log(JSON.stringify(outputMessage, null, 2));
 }
 
 function log(message) {
