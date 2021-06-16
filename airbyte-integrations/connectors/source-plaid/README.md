@@ -43,7 +43,7 @@ npm install
 node source.js spec
 node source.js check --config secrets/config.json
 node source.js discover --config secrets/config.json
-node source.js read --config secrets/config.json --catalog sample_files/configured_catalog.json
+node source.js read --config secrets/config.json --catalog sample_files/fullrefresh_configured_catalog.json
 ```
 
 ### Unit Tests (wip)
