@@ -38,7 +38,12 @@ async function read(config, catalog) {
   );
 
   if (response.status !== 200) {
-    log('Failure occurred when calling Plaid API');
+    log({
+      message: response.data.error_message,
+      error_code: response.data.error_code,
+      error_type: response.data.error_type,
+    });
+
     process.exit(1);
   } else {
     response.data.accounts
@@ -78,6 +83,32 @@ function getBaseUrl(plaidEnv) {
   }
 }
 
+async function updateLink(config) {
+  const url = `${getBaseUrl(config.plaid_env)}/link/token/create`;
+  const response = await axios.post(url, {
+    access_token: config.access_token,
+    client_id: config.client_id,
+    secret: config.api_key,
+    client_name: 'Airbyte Test',
+    language: 'en',
+    country_codes: ['US'],
+    user: {
+      client_user_id: 'airbyte-testing-user',
+    },
+  });
+  if (response.status !== 200) {
+    log({
+      message: response.data.error_message,
+      error_code: response.data.error_code,
+      error_type: response.data.error_type,
+    });
+
+    process.exit(1);
+  } else {
+    console.log(response.data);
+  }
+}
+
 async function check(config) {
   // Validate input configuration by hitting the balance endpoint.
   let result;
@@ -88,6 +119,7 @@ async function check(config) {
       access_token: config.access_token,
       client_id: config.client_id,
       secret: config.api_key,
+      link_token: 'link-sandbox-85117c9a-8de1-4cc6-8f79-ec4bd9782e70',
     },
     { validateStatus: () => true }
   );
@@ -224,6 +256,18 @@ async function run(args) {
     help: 'path to the catalog used to determine which data to read',
   });
 
+  // Accept the update-link command
+  const updateLinkParser = subparsers.add_parser('update-link', {
+    help: 'update item link',
+    parents: [parentParser],
+  });
+  const requiredUpdateLinkParser = updateLinkParser.add_argument_group('required named arguments');
+  requiredUpdateLinkParser.add_argument('--config', {
+    type: 'str',
+    required: true,
+    help: 'path to the json configuration file',
+  });
+
   const parsedArgs = mainParser.parse_args(args);
   const command = parsedArgs.command;
 
@@ -238,6 +282,9 @@ async function run(args) {
     const config = readJson(getInputFilePath(parsedArgs.config));
     const configuredCatalog = readJson(getInputFilePath(parsedArgs.catalog));
     await read(config, configuredCatalog);
+  } else if (command === 'update-link') {
+    const config = readJson(getInputFilePath(parsedArgs.config));
+    await updateLink(config);
   } else {
     // If we don't recognize the command log the problem and exit with an error code greater than 0 to indicate the process
     // had a failure
