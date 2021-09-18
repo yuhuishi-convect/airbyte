@@ -44,7 +44,11 @@ public class Databases {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Databases.class);
 
-  public static Database createPostgresDatabase(String username, String password, String jdbcConnectionString) {
+  public static Database createPostgresDatabase(final String username, final String password, final String host, final int port, final String database) {
+    return createPostgresDatabase(username, password, String.format("jdbc:postgresql://%s:%s/%s", host, port, database));
+  }
+
+  public static Database createPostgresDatabase(final String username, final String password, final String jdbcConnectionString) {
     return createDatabase(username, password, jdbcConnectionString, "org.postgresql.Driver", SQLDialect.POSTGRES);
   }
 
