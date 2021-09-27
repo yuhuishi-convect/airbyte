@@ -25,6 +25,7 @@
 package io.airbyte.db.instance.configs.migrations;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.annotations.VisibleForTesting;
 import io.airbyte.commons.json.Jsons;
 import io.airbyte.config.Configs;
 import io.airbyte.config.EnvConfigs;
@@ -67,15 +68,16 @@ public class V0_29_21_001__Store_last_sync_state extends BaseJavaMigration {
       SQLDataType.OFFSETDATETIME.nullable(false).defaultValue(DSL.currentOffsetDateTime()));
 
   @Override
-  public void migrate(Context context) throws Exception {
+  public void migrate(final Context context) throws Exception {
     LOGGER.info("Running migration: {}", this.getClass().getSimpleName());
-
-    DSLContext ctx = DSL.using(context.getConnection());
+    final DSLContext ctx = DSL.using(context.getConnection());
+    final Configs configs = new EnvConfigs();
     createTable(ctx);
-    copyData(ctx, getSyncToStateMap());
+    copyData(ctx, getSyncToStateMap(configs));
   }
 
-  private void createTable(final DSLContext ctx) {
+  @VisibleForTesting
+  static void createTable(final DSLContext ctx) {
     ctx.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";");
     ctx.createTable(TABLE)
         .column(COLUMN_SYNC_ID)
@@ -88,7 +90,8 @@ public class V0_29_21_001__Store_last_sync_state extends BaseJavaMigration {
         .execute();
   }
 
-  private void copyData(final DSLContext ctx, final Map<String, JsonNode> syncToStateMap) {
+  @VisibleForTesting
+  static void copyData(final DSLContext ctx, final Map<String, JsonNode> syncToStateMap) {
     final OffsetDateTime timestamp = OffsetDateTime.now();
     for (Map.Entry<String, JsonNode> entry : syncToStateMap.entrySet()) {
       ctx.insertInto(TABLE)
@@ -102,17 +105,17 @@ public class V0_29_21_001__Store_last_sync_state extends BaseJavaMigration {
 
   /**
    * This migration requires a connection to the job database, which may be a separate database from
-   * the config database. However, the job database only exists in production or test, not in
-   * development. We use the job database environment variables to determine how to connect to the job
-   * database. This approach is for sure not 100% reliable. However, it is better than doing half of
-   * the migration here (creating the table), and the rest of the work during server start up (copying
-   * the data from the job database).
+   * the config database. However, the job database only exists in production, not in development or
+   * test. We use the job database environment variables to determine how to connect to the job
+   * database. This approach is not 100% reliable. However, it is better than doing half of the
+   * migration here (creating the table), and the rest of the work during server start up (copying the
+   * data from the job database).
    */
-  private static Optional<Database> getJobsDatabase() {
+  @VisibleForTesting
+  static Optional<Database> getJobsDatabase(final Configs configs) {
     try {
       // If the environment variables exist, it means the migration is run in production.
       // Connect to the official job database.
-      final Configs configs = new EnvConfigs();
       final Database jobsDatabase = new JobsDatabaseInstance(
           configs.getDatabaseUser(),
           configs.getDatabasePassword(),
@@ -133,8 +136,9 @@ public class V0_29_21_001__Store_last_sync_state extends BaseJavaMigration {
   /**
    * @return a map from sync id to last job attempt state.
    */
-  private static Map<String, JsonNode> getSyncToStateMap() throws SQLException {
-    final Optional<Database> jobsDatabase = getJobsDatabase();
+  @VisibleForTesting
+  static Map<String, JsonNode> getSyncToStateMap(final Configs configs) throws SQLException {
+    final Optional<Database> jobsDatabase = getJobsDatabase(configs);
     if (jobsDatabase.isEmpty()) {
       return Collections.emptyMap();
     }
