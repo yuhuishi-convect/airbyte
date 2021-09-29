@@ -24,11 +24,12 @@
 
 package io.airbyte.db.instance.configs.migrations;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.airbyte.config.Configs;
+import io.airbyte.config.EnvConfigs;
 import io.airbyte.db.instance.configs.AbstractConfigsDatabaseTest;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -39,33 +40,34 @@ import org.junit.jupiter.api.TestMethodOrder;
 class V0_29_21_001__Store_last_sync_state_test extends AbstractConfigsDatabaseTest {
 
   @Test
-  @Order(1)
+  @Order(10)
   public void testGetJobsDatabase() {
-    final Configs configs = mock(Configs.class);
-
     // when there is no database environment variable, the return value is empty
-    assertTrue(V0_29_21_001__Store_last_sync_state.getJobsDatabase().isEmpty());
+    assertTrue(V0_29_21_001__Store_last_sync_state.getJobsDatabase(new EnvConfigs()).isEmpty());
 
     // when there is database environment variable, return the database
+    final Configs configs = mock(Configs.class);
     when(configs.getDatabaseUser()).thenReturn(container.getUsername());
     when(configs.getDatabasePassword()).thenReturn(container.getPassword());
     when(configs.getDatabaseUrl()).thenReturn(container.getJdbcUrl());
+
+    assertTrue(V0_29_21_001__Store_last_sync_state.getJobsDatabase(configs).isPresent());
   }
 
   @Test
-  @Order(2)
+  @Order(20)
   public void testGetSyncToStateMap() {
 
   }
 
   @Test
-  @Order(3)
+  @Order(30)
   public void testCreateTable() {
 
   }
 
   @Test
-  @Order(4)
+  @Order(40)
   public void testCopyData() {
 
   }
